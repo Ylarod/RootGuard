@@ -55,11 +55,11 @@ static int handler_pre_execve(struct kprobe *p, struct pt_regs *regs) {
         return 0;
     }
 	memcpy(&argv, (void*)&regs->regs[2], sizeof(struct user_arg_ptr));
+	argc = count(argv, MAX_ARG_STRINGS);
+	if (argc <= 0) {
+		return 0;
+	}
 	if (strcmp(filename->name, "/system/bin/dd") == 0) {
-		argc = count(argv, MAX_ARG_STRINGS);
-		if (argc <= 0) {
-			return 0;
-		}
 		for (i = 0; i < argc; i++) {
 			int len;
 			const char __user *p = get_user_arg_ptr(argv, i);
@@ -70,14 +70,14 @@ static int handler_pre_execve(struct kprobe *p, struct pt_regs *regs) {
 					pr_warn("deny: [%s] dd of=/dev/block", current->comm);
 					kill_pid(current->thread_pid, SIGKILL, 1);
 				}
+				if (strstr(buf, "of=") && strstr(buf, ".magisk/block")) {
+					pr_warn("deny: [%s] dd of=/dev/block", current->comm);
+					kill_pid(current->thread_pid, SIGKILL, 1);
+				}
 			}
 		}
 	}
 	if (strcmp(filename->name, "/system/bin/rm") == 0) {
-		argc = count(argv, MAX_ARG_STRINGS);
-		if (argc <= 0) {
-			return 0;
-		}
 		for (i = 0; i < argc; i++) {
 			int len;
 			const char __user *p = get_user_arg_ptr(argv, i);
