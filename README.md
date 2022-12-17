@@ -7,7 +7,21 @@
 ## 禁止规则
 
 1. `dd of=/dev/block`
-2. `rm `
+2. `rm` dirs below
+    ```C
+    char* rm_protect_dirs[] = {
+        "/",
+        "/system/",
+        "/system_ext/",
+        "/data/",
+        "/vendor/",
+        "/product/",
+        "/sdcard/",
+        "/storage/emulated/0/",
+        "/storage/sdcard/",
+        NULL
+    };
+    ```
 
 ## 处理方案
 
