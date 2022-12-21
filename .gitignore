@@ -1,4 +1,5 @@
 .cache/
+.thinlto-cache/
 Makefile
 compile_commands.json
 *.ko
