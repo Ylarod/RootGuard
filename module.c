@@ -108,6 +108,9 @@ static int handler_pre_vfs_write(struct kprobe *p, struct pt_regs *regs) {
 	struct path files_path = f->f_path;
 	char *path = d_path(&files_path, buf, 128);
 	buf[127] = 0;
+	if (IS_ERR(path)) {
+        return 0;
+    }
 	if (startswith(path, "/dev/block")) {
 		pr_warn("deny: [%s] write to %s", current->comm, path);
 		kill_pid(current->thread_pid, SIGKILL, 1);
@@ -138,6 +141,9 @@ static int handler_pre_do_unlinkat(struct kprobe *p, struct pt_regs *regs) {
 	char *path;
 	if (f != NULL) {
 		path = d_path(&f->f_path, buf, PATH_MAX);
+		if (IS_ERR(path)) {
+			return 0;
+		}
 		int j = 0;
 		for (;;) {
 			char* protect_dir = unlink_protect_dirs[j];
