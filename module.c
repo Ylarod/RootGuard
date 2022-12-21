@@ -108,7 +108,7 @@ static int handler_pre_vfs_write(struct kprobe *p, struct pt_regs *regs) {
 	struct path files_path = f->f_path;
 	char *path = d_path(&files_path, buf, 128);
 	buf[127] = 0;
-	if (IS_ERR(path)) {
+	if (IS_ERR(path) || path == NULL) {
         return 0;
     }
 	if (startswith(path, "/dev/block")) {
@@ -136,17 +136,23 @@ static int handler_pre_do_unlinkat(struct kprobe *p, struct pt_regs *regs) {
 	}
  	int dfd = regs->regs[0];
 	// struct filename *name = (struct filename*)regs->regs[1];
+	// if (dfd == AT_FDCWD) {
+	// 	// spin_lock(&current->fs->lock);
+	// 	// path = d_path(&current->fs->pwd, buf, PATH_MAX);
+	// 	// spin_unlock(&current->fs->lock);
+	// 	path = (char*)name->name;
+	// }
 	struct file *f = fget(dfd);
-	if (IS_ERR(f)) {
+	if (f == NULL) {
 		return 0;
 	}
 	char *buf = (char *)kmalloc(GFP_KERNEL, PATH_MAX);
-	if (IS_ERR(buf)) {
+	if (IS_ERR(buf) || buf == NULL) {
 		fput(f);
 		return 0;
 	}
 	char *path = d_path(&f->f_path, buf, PATH_MAX);
-	if (IS_ERR(path)) {
+	if (IS_ERR(path) || path == NULL) {
 		goto out;
 	}
 	int j = 0;
@@ -165,12 +171,6 @@ static int handler_pre_do_unlinkat(struct kprobe *p, struct pt_regs *regs) {
 out:
 	fput(f);
 	kfree(buf);
-	// if (dfd == AT_FDCWD) {
-	// 	// spin_lock(&current->fs->lock);
-	// 	// path = d_path(&current->fs->pwd, buf, PATH_MAX);
-	// 	// spin_unlock(&current->fs->lock);
-	// 	path = (char*)name->name;
-	// }
     return 0;
 }
 
