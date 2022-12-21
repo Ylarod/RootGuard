@@ -137,27 +137,34 @@ static int handler_pre_do_unlinkat(struct kprobe *p, struct pt_regs *regs) {
  	int dfd = regs->regs[0];
 	// struct filename *name = (struct filename*)regs->regs[1];
 	struct file *f = fget(dfd);
-	char *buf = (char *)kmalloc(GFP_KERNEL, PATH_MAX);
-	char *path;
-	if (f != NULL) {
-		path = d_path(&f->f_path, buf, PATH_MAX);
-		if (IS_ERR(path)) {
-			return 0;
-		}
-		int j = 0;
-		for (;;) {
-			char* protect_dir = unlink_protect_dirs[j];
-			if (protect_dir == NULL) {
-				break;
-			}
-			if (startswith(path, protect_dir)) {
-				pr_warn("deny: [%s] unlinkat %s", current->comm, buf);
-				kill_pid(current->thread_pid, SIGKILL, 1);
-				return 0;
-			}
-			j++;
-		}
+	if (IS_ERR(f)) {
+		return 0;
 	}
+	char *buf = (char *)kmalloc(GFP_KERNEL, PATH_MAX);
+	if (IS_ERR(buf)) {
+		fput(f);
+		return 0;
+	}
+	char *path = d_path(&f->f_path, buf, PATH_MAX);
+	if (IS_ERR(path)) {
+		goto out;
+	}
+	int j = 0;
+	for (;;) {
+		char* protect_dir = unlink_protect_dirs[j];
+		if (protect_dir == NULL) {
+			break;
+		}
+		if (startswith(path, protect_dir)) {
+			pr_warn("deny: [%s] unlinkat %s", current->comm, buf);
+			kill_pid(current->thread_pid, SIGKILL, 1);
+			goto out;
+		}
+		j++;
+	}
+out:
+	fput(f);
+	kfree(buf);
 	// if (dfd == AT_FDCWD) {
 	// 	// spin_lock(&current->fs->lock);
 	// 	// path = d_path(&current->fs->pwd, buf, PATH_MAX);
